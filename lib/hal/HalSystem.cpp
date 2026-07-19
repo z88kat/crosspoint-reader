@@ -42,8 +42,16 @@ void IRAM_ATTR __wrap_panic_print_backtrace(const void* frame, int core) {
     panicStack[i].sp = 0;
   }
 
+  // Read the stack pointer from the CPU exception frame. The frame layout is
+  // architecture-specific: RISC-V (Xteink X3/X4, ESP32-C3) exposes it as
+  // RvExcFrame::sp; Xtensa (M5Stack Paper, classic ESP32) as XtExcFrame::a1
+  // (a1 is the stack pointer register). The stack-walk loop below is arch-neutral.
+#if __riscv
   // Copied from components/esp_system/port/arch/riscv/panic_arch.c
   uint32_t sp = (uint32_t)((RvExcFrame*)frame)->sp;
+#else
+  uint32_t sp = (uint32_t)((XtExcFrame*)frame)->a1;
+#endif
   const int per_line = 8;
   int depth = 0;
   for (int x = 0; x < 1024; x += per_line * sizeof(uint32_t)) {

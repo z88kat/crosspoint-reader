@@ -270,7 +270,12 @@ void setup() {
   // worked without the delay because USB was already enumerated.
   delay(250);
   Serial.begin(115200);
-  logSerial.setTxTimeoutMs(1);  // This is a load-bearing 1. Do not modify.
+#if !CONFIG_IDF_TARGET_ESP32
+  // setTxTimeoutMs is an HWCDC (USB-CDC) method — only present on the C3/S3
+  // native-USB targets. The classic ESP32 (M5Paper) logs over UART0, which has
+  // no such call. This is a load-bearing 1 on X3/X4. Do not modify.
+  logSerial.setTxTimeoutMs(1);
+#endif
 #endif
 
   HalSystem::begin();

@@ -27,7 +27,15 @@ won't trigger deprecation warnings.
 #define LOG_LEVEL 0
 #endif
 
+// logSerial aliases the platform's real Serial object. On the ESP32-C3/S3
+// (Xteink X3/X4) that is the native USB-CDC peripheral (HWCDC); on the classic
+// ESP32 (M5Stack Paper) it is a UART HardwareSerial. Bind the reference to the
+// matching type per target so `Serial` resolves correctly on each MCU family.
+#if CONFIG_IDF_TARGET_ESP32
+static HardwareSerial& logSerial = Serial;
+#else
 static HWCDC& logSerial = Serial;
+#endif
 
 void logPrintf(const char* level, const char* origin, const char* format, ...);
 

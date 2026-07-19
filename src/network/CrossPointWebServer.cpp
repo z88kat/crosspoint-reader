@@ -394,6 +394,10 @@ void CrossPointWebServer::handleStatus() const {
 
   char snBuf[33] = {0};
   bool valid = false;
+#if !CONFIG_IDF_TARGET_ESP32
+  // The Xteink X3/X4 store a serial number in the eFuse USER_DATA block. That
+  // eFuse field only exists on the C3/S3 targets; the classic ESP32 (M5Paper)
+  // has a different eFuse layout and no such serial, so skip the read there.
   if (esp_efuse_read_field_blob(ESP_EFUSE_USER_DATA, snBuf, 256) == ESP_OK) {
     valid = snBuf[0] != '\0' && snBuf[0] != (char)0xFF;
     for (int i = 0; i < 32 && snBuf[i] != '\0'; i++) {
@@ -403,6 +407,7 @@ void CrossPointWebServer::handleStatus() const {
       }
     }
   }
+#endif
 
   if (valid) {
     doc["serial"] = snBuf;

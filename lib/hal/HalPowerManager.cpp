@@ -75,9 +75,16 @@ void HalPowerManager::startDeepSleep(HalGPIO& gpio) const {
   logSerial.end();
 #endif
 
-  // Pre-sleep routines from the original firmware
-  // GPIO13 is connected to battery latch MOSFET, we need to make sure it's low during sleep
-  // Note that this means the MCU will be completely powered off during sleep, including RTC
+  // Turn the radio fully off before sleeping. Deep sleep powers it down anyway,
+  // but be explicit so battery drain is deterministic and any future light-sleep
+  // path is covered too.
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
+
+#if __riscv
+  // Xteink X3/X4 (ESP32-C3) pre-sleep routine from the original firmware.
+  // GPIO13 is the battery-latch MOSFET; drive it low so the MCU fully powers off
+  // during sleep (including RTC).
   constexpr gpio_num_t GPIO_SPIWP = GPIO_NUM_13;
   gpio_set_direction(GPIO_SPIWP, GPIO_MODE_OUTPUT);
   gpio_set_level(GPIO_SPIWP, 0);
@@ -85,11 +92,18 @@ void HalPowerManager::startDeepSleep(HalGPIO& gpio) const {
   gpio_deep_sleep_hold_en();
   gpio_hold_en(GPIO_SPIWP);
   pinMode(InputManager::POWER_BUTTON_PIN, INPUT_PULLUP);
-  // Arm the wakeup trigger *after* the button is released
+  // Arm the wakeup trigger *after* the button is released.
   // Note: this is only useful for waking up on USB power. On battery, the MCU will be completely powered off, so the
   // power button is hard-wired to briefly provide power to the MCU, waking it up regardless of the wakeup source
   // configuration
   esp_deep_sleep_enable_gpio_wakeup(1ULL << InputManager::POWER_BUTTON_PIN, ESP_GPIO_WAKEUP_GPIO_LOW);
+#else
+  // M5Stack Paper (classic ESP32): no GPIO deep-sleep wakeup peripheral. The
+  // power/confirm button (GPIO38) is an RTC GPIO, so arm EXT1 wake on a LOW level.
+  // TODO(stage5): drive the M5Paper GPIO2 main-power latch and full power policy.
+  pinMode(InputManager::POWER_BUTTON_PIN, INPUT_PULLUP);
+  esp_sleep_enable_ext1_wakeup(1ULL << InputManager::POWER_BUTTON_PIN, ESP_EXT1_WAKEUP_ALL_LOW);
+#endif
   // Enter Deep Sleep
   esp_deep_sleep_start();
 }

@@ -67,12 +67,13 @@ class ActivityManager {
   std::atomic<bool> requestedUpdate{false};
 
  public:
-  explicit ActivityManager(GfxRenderer& renderer, MappedInputManager& mappedInput)
-      : renderer(renderer), mappedInput(mappedInput), renderingMutex(xSemaphoreCreateMutex()) {
-    assert(renderingMutex != nullptr && "Failed to create rendering mutex");
-    stackActivities.reserve(10);
-  }
-  ~ActivityManager() { assert(false); /* should never be called */ };
+  // Defined out-of-line in ActivityManager.cpp: the unique_ptr<Activity> members
+  // need Activity to be complete where the constructor/destructor instantiate the
+  // deleter, but this header can only forward-declare Activity (Activity.h includes
+  // ActivityManager.h). GCC 14.2 (Xtensa/M5Paper) instantiates the member deleter at
+  // the constructor and rejects the incomplete type if these are defined inline.
+  explicit ActivityManager(GfxRenderer& renderer, MappedInputManager& mappedInput);
+  ~ActivityManager();
 
   void begin();
   void loop();

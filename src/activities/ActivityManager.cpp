@@ -21,6 +21,18 @@
 
 static portMUX_TYPE activityManagerSpinlock = portMUX_INITIALIZER_UNLOCKED;
 
+// Constructor/destructor defined here (not inline in the header) so Activity is a
+// complete type: the unique_ptr<Activity> members' deleter is instantiated in this
+// translation unit, which pulls in the full Activity definition via the activity
+// headers above. See the note in ActivityManager.h.
+ActivityManager::ActivityManager(GfxRenderer& renderer, MappedInputManager& mappedInput)
+    : renderer(renderer), mappedInput(mappedInput), renderingMutex(xSemaphoreCreateMutex()) {
+  assert(renderingMutex != nullptr && "Failed to create rendering mutex");
+  stackActivities.reserve(10);
+}
+
+ActivityManager::~ActivityManager() { assert(false); /* should never be called */ }
+
 void ActivityManager::begin() {
   xTaskCreatePinnedToCore(&renderTaskTrampoline, "ActivityManagerRender",
                           8192,               // Stack size
