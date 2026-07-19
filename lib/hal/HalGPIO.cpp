@@ -192,6 +192,14 @@ HalGPIO::DeviceType detectDeviceTypeWithFingerprint() {
 
 void HalGPIO::begin() {
   inputMgr.begin();
+
+#if FREEINK_DEVICE_M5PAPER
+  // M5Stack Paper: the SPI bus (SCLK14/MOSI12/MISO13, shared display+SD) is owned
+  // by the SDK — the IT8951 display driver and SDCardManager each init it from
+  // BoardConfig::ACTIVE. Do NOT call SPI.begin() with the Xteink X4 pins here, and
+  // there is no X3/X4 fingerprint to run: the device type is fixed at M5Paper.
+  _deviceType = DeviceType::M5Paper;
+#else
   SPI.begin(EPD_SCLK, SPI_MISO, EPD_MOSI, EPD_CS);
 
   _deviceType = detectDeviceTypeWithFingerprint();
@@ -200,6 +208,7 @@ void HalGPIO::begin() {
     pinMode(BAT_GPIO0, INPUT);
     pinMode(UART0_RXD, INPUT);
   }
+#endif
 }
 
 void HalGPIO::update() {
@@ -259,6 +268,12 @@ bool HalGPIO::verifyPowerButtonWakeup(uint16_t requiredDurationMs, bool shortPre
 }
 
 bool HalGPIO::isUsbConnected() const {
+#if FREEINK_DEVICE_M5PAPER
+  // M5Stack Paper exposes no wired USB/VBUS detect GPIO (usbDetect is unassigned
+  // in the M5PAPER_V11 board profile). Report "not connected"; the power stage can
+  // revisit this if a usable detect line is identified.
+  return false;
+#else
   if (deviceIsX3()) {
     // X3: infer USB/charging via BQ27220 Current() register (0x0C, signed mA).
     // Positive current means charging.
@@ -273,9 +288,21 @@ bool HalGPIO::isUsbConnected() const {
   }
   // U0RXD/GPIO20 reads HIGH when USB is connected
   return digitalRead(UART0_RXD) == HIGH;
+#endif
 }
 
 HalGPIO::WakeupReason HalGPIO::getWakeupReason() const {
+#if FREEINK_DEVICE_M5PAPER
+  // M5Stack Paper: wake from deep sleep is armed as EXT1 on the power/confirm
+  // button (GPIO38). Treat an EXT1 / deep-sleep-reset wake as a power-button
+  // wake; every other cause (cold boot, flash, reset) proceeds as a normal boot
+  // so the device always reaches the UI. TODO(stage5): full wake/verify policy.
+  const auto wakeupCause = esp_sleep_get_wakeup_cause();
+  if (wakeupCause == ESP_SLEEP_WAKEUP_EXT1 || esp_reset_reason() == ESP_RST_DEEPSLEEP) {
+    return WakeupReason::PowerButton;
+  }
+  return WakeupReason::Other;
+#else
   const auto wakeupCause = esp_sleep_get_wakeup_cause();
   const auto resetReason = esp_reset_reason();
 
@@ -292,4 +319,5 @@ HalGPIO::WakeupReason HalGPIO::getWakeupReason() const {
     return WakeupReason::AfterUSBPower;
   }
   return WakeupReason::Other;
+#endif
 }

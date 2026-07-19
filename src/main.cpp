@@ -262,6 +262,19 @@ void setupDisplayAndFonts(bool seamless = false) {
 void setup() {
   t1 = millis();
 
+#if FREEINK_DEVICE_M5PAPER
+  // M5Stack Paper latches its own power through a MOSFET on GPIO2: it MUST be
+  // driven HIGH first thing at boot or the board powers off the instant USB is
+  // unplugged (and never runs on battery). GPIO5 gates the external/peripheral
+  // power rail (SD card, GT911 touch). The EPD rail (GPIO23) is owned by the
+  // IT8951 display driver. Do this before any delay so a battery-only boot
+  // latches immediately.
+  pinMode(2, OUTPUT);
+  digitalWrite(2, HIGH);
+  pinMode(5, OUTPUT);
+  digitalWrite(5, HIGH);
+#endif
+
 #ifdef ENABLE_SERIAL_LOG
   // Earliest possible Serial setup. The 250 ms stall before begin() lets the
   // USB Serial/JTAG peripheral finish power-on and lets the host complete USB
