@@ -1564,6 +1564,41 @@ int GfxRenderer::getScreenHeight() const {
   return panelWidth;
 }
 
+void GfxRenderer::tapToLogical(float nx, float ny, int& logicalX, int& logicalY) const {
+  // Clamp to the unit square so a slightly out-of-range report can't index past
+  // the panel.
+  if (nx < 0.0f) nx = 0.0f;
+  if (nx > 1.0f) nx = 1.0f;
+  if (ny < 0.0f) ny = 0.0f;
+  if (ny > 1.0f) ny = 1.0f;
+
+  // Normalized -> physical (panel-native) pixel. The SDK normalizes over the
+  // panel-native frame (panelWidth x panelHeight), the same frame the internal
+  // logical->physical rotation targets.
+  const int phyX = static_cast<int>(nx * (panelWidth - 1) + 0.5f);
+  const int phyY = static_cast<int>(ny * (panelHeight - 1) + 0.5f);
+
+  // Inverse of rotateCoordinates(): physical -> logical for the live orientation.
+  switch (orientation) {
+    case Portrait:  // logical (x,y): phyX = y; phyY = panelHeight-1-x
+      logicalX = panelHeight - 1 - phyY;
+      logicalY = phyX;
+      break;
+    case LandscapeClockwise:  // phyX = panelWidth-1-x; phyY = panelHeight-1-y
+      logicalX = panelWidth - 1 - phyX;
+      logicalY = panelHeight - 1 - phyY;
+      break;
+    case PortraitInverted:  // phyX = panelWidth-1-y; phyY = x
+      logicalX = phyY;
+      logicalY = panelWidth - 1 - phyX;
+      break;
+    case LandscapeCounterClockwise:  // phyX = x; phyY = y
+      logicalX = phyX;
+      logicalY = phyY;
+      break;
+  }
+}
+
 // Translate a logical rect through rotateCoordinates and take the bounding
 // box of its four corners on the physical panel. Output coords are inclusive
 // and clamped. Returns false if the rect ends up fully off-panel.

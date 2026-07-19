@@ -82,6 +82,15 @@ class HalGPIO {
   // Should only be called when wakeup reason is PowerButton.
   bool verifyPowerButtonWakeup(uint16_t requiredDurationMs, bool shortPressAllowed);
 
+  // Capacitive touch (inert on boards without a configured touch controller,
+  // i.e. everything except the M5Stack Paper's GT911 — returns false there).
+  bool hasTouch() const;
+  bool isTouchPressed() const;
+  // One-shot tap completed since the last update(). Writes the touch-down
+  // position normalized to 0..1 in the panel's native frame. Transform to
+  // logical screen coordinates with GfxRenderer::tapToLogical().
+  bool wasTapped(float& nx, float& ny) const;
+
   // Check if USB is connected
   bool isUsbConnected() const;
 

@@ -134,6 +134,14 @@ class GfxRenderer {
   // Screen ops
   int getScreenWidth() const;
   int getScreenHeight() const;
+
+  // Map a capacitive-touch tap from the panel-native NORMALIZED frame (nx, ny in
+  // 0..1, as reported by the SDK InputManager) to LOGICAL screen coordinates in
+  // the current orientation (the same space as getScreenWidth()/getScreenHeight()
+  // and every draw call). This is the inverse of the internal logical->physical
+  // rotation. Inputs are clamped to [0,1]. Used by MappedInputManager to turn
+  // touches into positioned taps / synthesized button events on touch boards.
+  void tapToLogical(float nx, float ny, int& logicalX, int& logicalY) const;
   void displayBuffer(HalDisplay::RefreshMode refreshMode = HalDisplay::FAST_REFRESH) const;
   // EXPERIMENTAL: Windowed update - display only a rectangular region
   // void displayWindow(int x, int y, int width, int height) const;

@@ -267,6 +267,12 @@ bool HalGPIO::verifyPowerButtonWakeup(uint16_t requiredDurationMs, bool shortPre
   return true;
 }
 
+bool HalGPIO::hasTouch() const { return inputMgr.hasTouch(); }
+
+bool HalGPIO::isTouchPressed() const { return inputMgr.isTouchPressed(); }
+
+bool HalGPIO::wasTapped(float& nx, float& ny) const { return inputMgr.wasTouchTap(nx, ny); }
+
 bool HalGPIO::isUsbConnected() const {
 #if FREEINK_DEVICE_M5PAPER
   // M5Stack Paper exposes no wired USB/VBUS detect GPIO (usbDetect is unassigned

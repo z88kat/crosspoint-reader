@@ -17,7 +17,13 @@ class MappedInputManager {
 
   MappedInputManager(HalGPIO& gpio, const GfxRenderer& renderer) : gpio(gpio), renderer(renderer) {}
 
-  void update() const { gpio.update(); }
+  // Samples buttons and (on touch boards) the capacitive digitizer. A completed
+  // tap is latched for this frame: it is exposed positionally via wasTapped() and,
+  // for taps landing in the on-screen bottom hint-bar strip, synthesized into a
+  // logical Back/Confirm/Left/Right button edge so menu/list/home UIs are fully
+  // navigable by touch (the M5Paper has no physical Back/Left/Right). Inert on
+  // button-only boards.
+  void update() const;
   bool wasPressed(Button button) const;
   bool wasReleased(Button button) const;
   bool isPressed(Button button) const;
@@ -27,6 +33,12 @@ class MappedInputManager {
   Labels mapLabels(const char* back, const char* confirm, const char* previous, const char* next) const;
   // Returns the raw front button index that was pressed this frame (or -1 if none).
   int getPressedFrontButton() const;
+
+  // True if a capacitive tap completed during the most recent update(), writing
+  // its position in LOGICAL screen coordinates (current orientation). Lets an
+  // activity handle location-aware taps (e.g. the reader's page-turn zones)
+  // directly. Always false on button-only boards.
+  bool wasTapped(int& logicalX, int& logicalY) const;
 
   // True when the control axis is flipped relative to the physical buttons: the user opted into
   // orientation-following front buttons AND the screen is *currently rendered* rotated (INVERTED /
@@ -44,4 +56,17 @@ class MappedInputManager {
   const GfxRenderer& renderer;
 
   bool mapButton(Button button, bool (HalGPIO::*fn)(uint8_t) const) const;
+
+  // Whether the synthesized touch button captured in the last update() satisfies
+  // a query for `button` (directly, or via the NavNext/NavPrevious composition).
+  bool touchSynthMatches(Button button) const;
+
+  // Per-frame touch state, refreshed by update(). Mutable because the input query
+  // methods are const (they mirror the button path, which reads hardware through a
+  // const HalGPIO&) but must observe the tap captured this frame.
+  mutable bool tapPending = false;         // a tap completed this frame
+  mutable int tapX = 0;                    // logical coords of the tap
+  mutable int tapY = 0;                    //
+  mutable bool synthButtonValid = false;   // tap mapped to a synthesized button
+  mutable Button synthButton = Button::Back;
 };

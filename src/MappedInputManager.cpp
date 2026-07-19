@@ -74,7 +74,82 @@ bool MappedInputManager::mapButton(const Button button, bool (HalGPIO::*fn)(uint
   return false;
 }
 
-bool MappedInputManager::wasPressed(const Button button) const { return mapButton(button, &HalGPIO::wasPressed); }
+void MappedInputManager::update() const {
+  gpio.update();
+
+  // Refresh per-frame touch state, then latch any tap that completed this frame.
+  tapPending = false;
+  synthButtonValid = false;
+
+  float nx = 0.0f, ny = 0.0f;
+  if (gpio.hasTouch() && gpio.wasTapped(nx, ny)) {
+    renderer.tapToLogical(nx, ny, tapX, tapY);
+    tapPending = true;
+
+    // Synthesize a logical button from a tap in the on-screen bottom hint-bar
+    // strip, so menu/list/home UIs are navigable without physical Back/Left/Right
+    // (the M5Paper only has the 3-position wheel). The strip mirrors the 4-button
+    // hint order drawn there, left-to-right: Back | Confirm | Left | Right. Taps
+    // above the strip are positional-only (see wasTapped(), used by the reader).
+    // NOTE: the strip height / quarter split is a first cut — tune it against the
+    // rendered hint bar on hardware.
+    const int w = renderer.getScreenWidth();
+    const int h = renderer.getScreenHeight();
+    if (w > 0 && h > 0 && tapY >= (h * 85) / 100) {
+      const int quarter = (tapX * 4) / w;  // 0..3, left to right
+      switch (quarter) {
+        case 0:
+          synthButton = Button::Back;
+          break;
+        case 1:
+          synthButton = Button::Confirm;
+          break;
+        case 2:
+          synthButton = Button::Left;
+          break;
+        default:
+          synthButton = Button::Right;
+          break;
+      }
+      synthButtonValid = true;
+    }
+  }
+}
+
+bool MappedInputManager::wasTapped(int& logicalX, int& logicalY) const {
+  if (!tapPending) {
+    return false;
+  }
+  logicalX = tapX;
+  logicalY = tapY;
+  return true;
+}
+
+bool MappedInputManager::touchSynthMatches(const Button button) const {
+  if (!synthButtonValid) {
+    return false;
+  }
+  if (button == synthButton) {
+    return true;
+  }
+  // Let a synthesized Left/Right also satisfy the composed NavNext/NavPrevious
+  // buttons, honoring the same direction swap mapButton() applies when the screen
+  // is rendered rotated.
+  const bool swapped = isNavDirectionSwapped();
+  if (button == Button::NavNext) {
+    return swapped ? (synthButton == Button::Left) : (synthButton == Button::Right);
+  }
+  if (button == Button::NavPrevious) {
+    return swapped ? (synthButton == Button::Right) : (synthButton == Button::Left);
+  }
+  return false;
+}
+
+// A completed tap is a momentary gesture, so it satisfies the press EDGE
+// (wasPressed) only — not the held level (isPressed) or release edge.
+bool MappedInputManager::wasPressed(const Button button) const {
+  return mapButton(button, &HalGPIO::wasPressed) || touchSynthMatches(button);
+}
 
 bool MappedInputManager::wasReleased(const Button button) const { return mapButton(button, &HalGPIO::wasReleased); }
 
