@@ -64,6 +64,20 @@ class HalGPIO {
   inline bool deviceIsX4() const { return _deviceType == DeviceType::X4; }
   inline bool deviceIsM5Paper() const { return _deviceType == DeviceType::M5Paper; }
 
+  // Short human-readable device name (logs, web status). Not user-facing chrome,
+  // so it is not routed through tr().
+  inline const char* deviceName() const {
+    switch (_deviceType) {
+      case DeviceType::X3:
+        return "X3";
+      case DeviceType::M5Paper:
+        return "M5Paper";
+      case DeviceType::X4:
+      default:
+        return "X4";
+    }
+  }
+
   // Start button GPIO and setup SPI for screen and SD card
   void begin();
 

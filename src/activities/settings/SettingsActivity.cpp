@@ -57,8 +57,13 @@ void SettingsActivity::rebuildSettingsLists() {
   }
 
   // Append device-only ACTION items
+#if !FREEINK_DEVICE_M5PAPER
+  // Front-button remap is meaningless on the M5Stack Paper: it has no front
+  // buttons, only the 3-position wheel and the touchscreen. Omit the entry there
+  // so it isn't a dead-end that waits for presses that can never arrive.
   controlsSettings.insert(controlsSettings.begin(),
                           SettingInfo::Action(StrId::STR_REMAP_FRONT_BUTTONS, SettingAction::RemapFrontButtons));
+#endif
   systemSettings.push_back(SettingInfo::Action(StrId::STR_WIFI_NETWORKS, SettingAction::Network));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_KOREADER_SYNC, SettingAction::KOReaderSync));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_OPDS_SERVERS, SettingAction::OPDSBrowser));

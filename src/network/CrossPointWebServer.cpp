@@ -390,7 +390,7 @@ void CrossPointWebServer::handleStatus() const {
   doc["rssi"] = apMode ? 0 : WiFi.RSSI();
   doc["freeHeap"] = ESP.getFreeHeap();
   doc["uptime"] = millis() / 1000;
-  doc["device"] = gpio.deviceIsX3() ? "X3" : "X4";
+  doc["device"] = gpio.deviceName();
 
   char snBuf[33] = {0};
   bool valid = false;
