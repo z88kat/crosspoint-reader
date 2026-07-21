@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <BoardConfig.h>
 #include <Epub.h>
 #include <FontCacheManager.h>
 #include <FontDecompressor.h>
@@ -301,6 +302,18 @@ void setup() {
   silentRebootMagic = 0;
   silentRebootTarget = 0;
 
+#if FREEINK_DEVICE_M5PAPER
+  // The M5Stack Paper's only push control is the wheel click (GPIO38, shared
+  // confirm+power). Use the confirm/back-hold input model so a short click is
+  // Confirm and a long hold (>=650ms) is Back — the board has no physical Back
+  // button and its GT911 touch Back is not yet working. In this mode GPIO38 is
+  // never reported as Power, so it no longer trips the hold-to-sleep path in
+  // loop(); sleep is instead a double-click of the wheel (handled in loop()).
+  // ACTIVE is a mutable runtime profile, so this stays an app-side override with
+  // no SDK change. Set before gpio.begin()/first input read.
+  BoardConfig::ACTIVE.inputStyle = BoardConfig::InputStyle::DigitalConfirmBackHold;
+#endif
+
   gpio.begin();
   powerManager.begin();
   halTiltSensor.begin();
@@ -529,6 +542,28 @@ void loop() {
     // This should never be hit as `enterDeepSleep` calls esp_deep_sleep_start
     return;
   }
+
+#if FREEINK_DEVICE_M5PAPER
+  // M5Stack Paper sleep gesture: double-click the wheel. A short wheel click emits
+  // BTN_CONFIRM (a long-press, which is Back, does not), so two clicks inside the
+  // window request sleep. This replaces the hold-to-sleep path below, which never
+  // fires on M5Paper because GPIO38 is not reported as Power under
+  // DigitalConfirmBackHold.
+  {
+    constexpr unsigned long M5_DOUBLE_CLICK_MS = 400;
+    static unsigned long m5LastConfirmClickMs = 0;
+    if (gpio.wasReleased(HalGPIO::BTN_CONFIRM)) {
+      const unsigned long nowMs = millis();
+      if (millis() >= allowSleepAt && m5LastConfirmClickMs != 0 && nowMs - m5LastConfirmClickMs <= M5_DOUBLE_CLICK_MS) {
+        LOG_DBG("SLP", "M5Paper double-click wheel -> sleep");
+        m5LastConfirmClickMs = 0;
+        enterDeepSleep();
+        return;  // enterDeepSleep() does not return
+      }
+      m5LastConfirmClickMs = nowMs;
+    }
+  }
+#endif
 
   if (millis() >= allowSleepAt && gpio.isPressed(HalGPIO::BTN_POWER) &&
       gpio.getPowerButtonHeldTime() > SETTINGS.getPowerButtonDuration()) {

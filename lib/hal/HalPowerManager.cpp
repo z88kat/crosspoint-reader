@@ -135,7 +135,15 @@ uint16_t HalPowerManager::getBatteryPercentage() const {
     _batteryLastPollMs = now;
     return _batteryCachedPercent;
   }
+#if FREEINK_DEVICE_M5PAPER
+  // M5Stack Paper reads the battery on the board-profile ADC pin (GPIO35, 2:1
+  // divider). The default constructor pulls pin + divider from
+  // BoardConfig::ACTIVE; hardcoding BAT_GPIO0 (GPIO0, the X4 pin) read the wrong
+  // pad and reported 0%.
+  static const BatteryMonitor battery;
+#else
   static const BatteryMonitor battery = BatteryMonitor(BAT_GPIO0);
+#endif
 
   // smooth the battery %.
   if (_batteryCachedPercent == 0) {
