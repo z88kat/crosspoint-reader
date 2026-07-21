@@ -87,6 +87,12 @@ class HalFile : public Print {
   int read();  // read a single byte
   size_t write(const void* buf, size_t count);
   size_t write(uint8_t b) override;
+  // Override Print's bulk write. Without this, a Print& caller (e.g. ZipFile
+  // streaming an unzipped cover image) falls back to Print::write()'s byte-at-a-
+  // time loop, which takes the storage mutex and does a 1-byte SD write per byte
+  // — hundreds of thousands of locked writes for one image, slow enough to trip
+  // the task watchdog. Forward to the single-lock bulk write instead.
+  size_t write(const uint8_t* buffer, size_t size) override;
   bool rename(const char* newPath);
   bool isDirectory() const;
   void rewindDirectory();

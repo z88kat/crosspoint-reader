@@ -159,6 +159,9 @@ int HalFile::read(void* buf, size_t count) { HAL_FILE_WRAPPED_CALL(read, buf, co
 int HalFile::read() { HAL_FILE_WRAPPED_CALL(read, ); }
 size_t HalFile::write(const void* buf, size_t count) { HAL_FILE_WRAPPED_CALL(write, buf, count); }
 size_t HalFile::write(uint8_t b) { HAL_FILE_WRAPPED_CALL(write, b); }
+// Print's bulk-write override: one mutex acquisition + one underlying bulk write,
+// instead of Print::write()'s per-byte fallback. See the note in HalStorage.h.
+size_t HalFile::write(const uint8_t* buffer, size_t size) { return write(static_cast<const void*>(buffer), size); }
 bool HalFile::rename(const char* newPath) { HAL_FILE_WRAPPED_CALL(rename, newPath); }
 bool HalFile::isDirectory() const { HAL_FILE_FORWARD_CALL(isDirectory, ); }  // already thread-safe, no need to wrap
 void HalFile::rewindDirectory() { HAL_FILE_WRAPPED_CALL(rewindDirectory, ); }
