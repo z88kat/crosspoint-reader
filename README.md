@@ -1,212 +1,143 @@
-# CrossPoint Reader
+# CrossPoint Reader — M5Stack Paper v1.1
 
-[![Fund contributors](https://img.shields.io/badge/%F0%9F%91%91_Fund_contributors-royalty.dev-BB953A?style=for-the-badge&labelColor=1a1a1a)](https://app.royalty.dev/crosspoint-reader/crosspoint-reader)
+Open-source e-reader firmware for the **[M5Stack Paper v1.1](https://docs.m5stack.com/en/core/m5paper_v1.1)** — a 4.7", 960×540 e-ink development device.
 
-CrossPoint is open-source e-reader firmware - community-built, fully hackable, free forever. It's maintained by a growing community of developers and readers who believe your device should do what you want - not what a manufacturer decided for you.
+This is a hardware port of [**CrossPoint Reader**](https://github.com/crosspoint-reader/crosspoint-reader) (originally built for the ESP32-C3 Xteink X3/X4) to the M5Stack Paper's classic-ESP32 hardware. It keeps CrossPoint's EPUB reading engine and reworks the platform layer — display, input, power, and file transfer — for the M5Paper.
 
-**Now running on:** ESP32C3-based Xteink [X4](https://www.xteink.com/products/xteink-x4) and [X3](https://www.xteink.com/products/xteink-x3).
-
-![CrossPoint Reader running on Xteink device](./docs/images/cover.jpg)
-
-> If you're planning to buy an Xteink device, consider purchasing an **X3/X4 Developer Edition** through https://crosspointreader.com. CrossPoint receives a small share of each sale, helping fund development costs.
-
-## What can CrossPoint do?
-
-- **Reader engine**: EPUB 2/3 rendering with embedded-style option, image handling, hyphenation, kerning, chapter navigation, footnotes, bookmarks, go-to-percent, auto page turn, orientation control, focus reading, KOReader progress sync and more. 
-
-- **Various formats**: native handling for `.epub`, `.xtc/.xtch`, `.txt`, and `.bmp`.
-
-- **Screenshots.**
-
-- **Custom fonts**: install your favorite fonts on the SD card.
-
-- **Tilt page turn (X3 only)**.
-
-- **Library workflow**: folder browser, hidden-file toggle, long-press delete, recent books, SD-cache management.
-
-- **Wireless workflows**:
-  
-  - File transfer web UI
-  - EPUB Optimizer
-  - Web settings UI/API (edit many device settings from browser)
-  - WebSocket fast uploads
-  - WebDAV handler
-  - AP mode (hotspot) and STA mode (join existing Wi-Fi), both with QR helpers
-  - Calibre wireless connect flow
-  - OPDS browser with saved servers (up to 8), search, pagination, and direct download
-  - OTA update checks and installs from GitHub releases
-
-- **Customization**: multiple themes (Classic, Lyra, Lyra Extended, RoundedRaff), sleep screen modes, front/side button remapping, status bar controls, power-button behavior, refresh cadence, and more.
-
-- **Localization**: 24 UI languages and counting. RTL support.
-
-### Coming soon:
-
-- Dictionary lookup — inline word lookup without leaving the reader.
-
-- More themes.
-
-- Much more! stay tuned.
+> **Scope:** this fork targets the **M5Stack Paper v1.1 only**. The Xteink X3/X4 build (`default` env) is left intact and still compiles, but this project's focus, testing, and documentation are the M5Paper.
 
 ---
 
-## USB-locked devices (Xteink Unlocker)
+## The device
 
-Some Xteink units purchased from third-party stores (e.g. AliExpress) ship with USB flashing locked from the factory.
-If your device is locked, you will need to use the **Xteink Unlocker** tool available at
-https://crosspointreader.com/#unlock-tool before you can flash CrossPoint.
-
-**You do not need this tool if you bought your device directly from xteink.com.** Those units are not locked.
-
-**Not sure if your device is locked?** Power it on, connect the USB-C cable, and try flashing via the web flasher first (see
-[Install firmware](#install-firmware) below). If the browser's serial device picker does not show your device, try a different
-USB port or browser before assuming the device is locked. Only reach for the unlocker if the device still doesn't appear.
-
-> ### ⚠️ WARNING: READ THIS BEFORE USING THE UNLOCKER ⚠️
-> 
-> **The only officially supported firmwares in the unlock tool are CrossPoint and CrossInk.**
-> 
-> Flashing any other firmware on a USB-locked device may **permanently brick the device** or leave it **permanently
-> stuck on that firmware with no recovery path**. Once USB flashing is re-locked, your only way back is via OTA, and if
-> the firmware you flashed doesn't support OTA, **there is no way out**.
-
-## Install firmware
-
-### Web installer (recommended)
-
-1. Connect your device to your computer via USB-C and wake/unlock the device
-2. Go to https://crosspointreader.com/#flash-tools, select device (X3 or X4), and choose an official CrossPoint release.
-
-### Web installer (specific version)
-
-1. Connect your device to your computer via USB-C and wake/unlock the device
-2. Download a `firmware.bin` from [Releases](https://github.com/crosspoint-reader/crosspoint-reader/releases), local build, or continuous integration artifact.
-3. Go to https://crosspointreader.com/#flash-tools, select device (X3 or X4), click "Custom .bin" and upload a `firmware.bin`.
-
-### Revert to Official Firmware
-
-To revert to the official firmware, you can also flash the latest official firmware using https://crosspointreader.com/#flash-tools.
-
-### Command line
-
-1. Install [`esptool`](https://github.com/espressif/esptool):
-
-```bash
-pip install esptool
-```
-
-2. Download `firmware.bin` from the [releases page](https://github.com/crosspoint-reader/crosspoint-reader/releases).
-3. Connect your device via USB-C.
-4. Find the device port. On Linux, run `dmesg` after connecting. On macOS:
-
-```bash
-log stream --predicate 'subsystem == "com.apple.iokit"' --info
-```
-
-5. Flash:
-
-```bash
-esptool.py --chip esp32c3 --port /dev/ttyACM0 --baud 921600 write_flash 0x10000 /path/to/firmware.bin
-```
-
-Adjust `/dev/ttyACM0` to match your system.
-
-### Manual
-
-See [Development quick start](#development-quick-start) below.
+| | M5Stack Paper v1.1 |
+|---|---|
+| **MCU** | ESP32-D0WDQ6 (classic ESP32, dual-core Xtensa LX6 @ 240 MHz) |
+| **RAM** | 512 KB internal + 8 MB PSRAM (framebuffer lives in PSRAM) |
+| **Flash** | 16 MB |
+| **Display** | 4.7" 960×540 e-ink, 16-level grayscale, IT8951E controller |
+| **Input** | 3-position side wheel (up / press / down) + GT911 capacitive touch |
+| **Storage** | microSD (shares the display SPI bus) |
+| **Battery** | LiPo, sampled on GPIO35 |
+| **USB** | USB-C via a CH9102 USB-to-UART bridge (serial only — see limitations) |
 
 ---
 
-## Custom SD-card fonts
+## Controls
 
-Convert your own TTF/OTF files into `.cpfont` files that load from the SD card. No firmware reflash is needed.
+The M5Paper has **no dedicated Back/menu buttons** — its only push control is the side wheel. The firmware maps everything onto it:
 
-1. Go to https://crosspointreader.com/fonts and open the "SD-card font builder" form.
-2. Upload up to four styles (regular, bold, italic, bold-italic), set the family name, point sizes, and Unicode range.
-3. Download the generated `.cpfont` files.
-4. Copy them to your SD card under `/fonts/YourFont/` (or `/.fonts/YourFont/` to hide the folder).
-5. Select the font on the device from the font settings.
+| Gesture | Action |
+|---|---|
+| **Roll wheel up / down** | Navigate lists · turn pages in the reader |
+| **Short press** the wheel | **Confirm** / select |
+| **Long press** the wheel (~0.65 s) | **Back** |
+| **Double press** the wheel | **Sleep** |
 
-Conversion runs the firmware repo's `lib/EpdFont/scripts/fontconvert_sdcard.py` script unmodified, so output matches a local host build.
-
----
-
-## Documentation
-
-- [User Guide](./USER_GUIDE.md)
-- [Web server usage](./docs/webserver.md)
-- [Web server endpoints](./docs/webserver-endpoints.md)
-- [Project scope](./SCOPE.md)
-- [Contributing docs](./docs/contributing/README.md)
+The device also auto-sleeps after the configured inactivity timeout.
 
 ---
 
-## Development quick start
+## Features
+
+The reading experience is CrossPoint's, running on the M5Paper panel:
+
+- **Reader engine** — EPUB 2/3 rendering, image handling, hyphenation, kerning, chapter navigation, footnotes, bookmarks, go-to-percent, auto page turn, orientation control, focus reading, KOReader progress sync.
+- **Formats** — `.epub`, `.txt`, `.bmp`, `.xtc/.xtch`.
+- **Custom fonts** — drop `.cpfont` files on the SD card (see below), no reflash needed.
+- **Library workflow** — folder browser, hidden-file toggle, long-press delete, recent books, SD-cache management.
+- **Wireless file transfer** — WiFi + WebDAV for copying books onto the SD card, plus the web settings UI/API. WiFi is only powered on while the File Transfer screen is open, then shut off.
+- **Customization** — themes, sleep-screen modes, status-bar controls, refresh cadence, and more.
+
+---
+
+## Getting your books onto the device
+
+The M5Paper's USB port **cannot** present the SD card as a USB drive (see [Limitations](#known-limitations)). Use one of:
+
+**A) Over WiFi (WebDAV)**
+1. On the device: **Home → File Transfer**. It joins WiFi and shows the device's IP.
+2. On your computer: connect to `http://<device-ip>/` as a WebDAV share.
+   - **macOS Finder:** Go → Connect to Server (⌘K) → `http://<device-ip>/` → Connect as Guest.
+3. Drag your EPUBs onto the mounted drive.
+
+**B) SD card reader**
+
+Pop the microSD out, copy files with a card reader, put it back. Simplest, no WiFi.
+
+---
+
+## Known limitations
+
+These are specific to the M5Paper hardware/port and are honest about the current state:
+
+- **Touch does not work yet.** The GT911 controller is detected over I²C but never enters scanning mode. On the classic ESP32 the touch reset line isn't on a controllable GPIO and the INT line (GPIO36) is input-only, so the usual GT911 reset/address sequence can't run. Navigation is fully covered by the wheel in the meantime; touch is under investigation.
+- **No USB mass storage.** The classic ESP32 has no native USB — the USB-C port is a UART bridge only. Use WebDAV or an SD reader. (USB-drive emulation needs an ESP32-S2/S3.)
+- **No over-the-air (OTA) updates.** Removed for this build — flash over USB (below).
+- **Repurposed shared button:** hold-to-bookmark in the reader and the Power+Down screenshot combo are unavailable, because the wheel press is now Confirm/Back/Sleep.
+
+---
+
+## Build & flash
+
+Everything is a normal [PlatformIO](https://platformio.org/) project. Developed and tested on an Apple-silicon Mac; Linux works the same way.
 
 ### Prerequisites
 
-- [pioarduino](https://github.com/pioarduino/pioarduino) or VS Code + pioarduino plugin
+- PlatformIO Core (`pip install platformio`) or VS Code + the PlatformIO extension
 - Python 3.8+
-- `clang-format` 21
-- USB-C cable supporting data transfer
+- A USB-C data cable
 
-### Setup
+### Clone (with submodule)
 
 ```bash
-git clone --recursive https://github.com/crosspoint-reader/crosspoint-reader
+git clone --recursive https://github.com/z88kat/crosspoint-reader
 cd crosspoint-reader
-
-# if cloned without --recursive:
+# if you already cloned without --recursive:
 git submodule update --init --recursive
 ```
 
-### Build / flash / monitor
+### Build
 
 ```bash
-pio run --target upload
+pio run -e m5paper
 ```
 
-### Contributor pre-PR checks
+### Flash
 
 ```bash
-./bin/clang-format-fix
-pio check -e default
-pio run -e default
+pio run -e m5paper -t upload
 ```
 
-### Debugging
+The build environment pins `upload_speed = 115200`. The M5Paper's CH9102/CH343 bridge is unreliable at higher rates (flashes time out mid-write), so a full flash takes a few minutes. If an upload fails partway with "chip stopped responding," just run it again — it's a bridge quirk, not a code problem. Set a higher `upload_speed` in a gitignored `platformio.local.ini` if your cable/host proves stable.
 
-After flashing the new features, it’s recommended to capture detailed logs from the serial port.
+To target a specific port:
 
-First, make sure all required Python packages are installed:
-
-```python
-python3 -m pip install pyserial colorama matplotlib
+```bash
+pio run -e m5paper -t upload --upload-port /dev/cu.usbserial-XXXXXXXX
 ```
 
-After that run the script:
+Find the port with `ls /dev/cu.usbserial-*` (macOS) or `ls /dev/ttyUSB*` (Linux).
 
-```sh
-# For Linux
-# This was tested on Debian and should work on most Linux systems.
-python3 scripts/debugging_monitor.py
+### Serial monitor / debugging
 
-# For macOS
-python3 scripts/debugging_monitor.py /dev/cu.usbmodem2101
+```bash
+pio device monitor -e m5paper
 ```
 
-Minor adjustments may be required for Windows.
+Logs stream over UART0 at 115200 baud (the classic ESP32 has no USB-CDC, so logging uses the hardware UART).
 
 ---
 
 ## Internals
 
-CrossPoint Reader is pretty aggressive about caching data down to the SD card to minimise RAM usage. The ESP32-C3 only has ~380KB of usable RAM, so we have to be careful. A lot of the decisions made in the design of the firmware were based on this constraint.
+### Memory
 
-### Data caching
+Unlike the ESP32-C3 the original firmware was written for, the M5Paper has **8 MB of PSRAM**, so the ~63 KB 960×540 framebuffer is heap-allocated in PSRAM and internal DRAM stays comfortable. Free heap sits around 250 KB at the home screen. The SD-card caching described below is inherited from the C3 design and still used — it keeps chapter re-opens fast.
 
-The first time chapters of a book are loaded, they are cached to the SD card. Subsequent loads are served from the
-cache. This cache directory exists at `.crosspoint` on the SD card. The structure is as follows:
+### SD-card cache
+
+The first time a book's chapters are laid out, the result is cached to the SD card and reused on later opens, under `.crosspoint` on the card:
 
 ```text
 .crosspoint/
@@ -217,54 +148,35 @@ cache. This cache directory exists at `.crosspoint` on the SD card. The structur
 │   ├── css_rules.cache  # parsed CSS rule cache
 │   ├── img_*            # rendered image cache files
 │   └── sections/        # per-chapter layout cache
-│       ├── 0.bin
-│       ├── 1.bin
-│       └── ...
 ├── settings.json        # device settings
 ├── state.json           # resume/runtime state
 └── recent.json          # recent books list
 ```
 
-Removing `/.crosspoint` clears all cached metadata and forces a full regeneration on next open. Book deletes, overwrites, and moves done through the firmware or web UI clear or re-key matching caches; manual SD-card edits may leave stale cache directories behind.
+Deleting `/.crosspoint` clears all cached metadata and forces a full re-parse on next open. See [docs/file-formats.md](./docs/file-formats.md) for the on-disk formats.
 
-For more details on the internal file structures, see the [file formats document](./docs/file-formats.md).
+### Custom SD-card fonts
 
----
+Convert TTF/OTF files into `.cpfont` files that load from the SD card (no reflash):
 
-## Contributing
-
-Contributions are welcome. If you're new to the codebase, start with the [contributing docs](./docs/contributing/README.md). For things to work on, check the [ideas discussion board](https://github.com/crosspoint-reader/crosspoint-reader/discussions/categories/ideas) — leave a comment before starting so we don't duplicate effort.
-
-Everyone here is a volunteer, so please be respectful and patient. For governance and community expectations, see [GOVERNANCE.md](./GOVERNANCE.md).
+1. Build them with the upstream tool at https://crosspointreader.com/fonts, or run `lib/EpdFont/scripts/fontconvert_sdcard.py` locally.
+2. Copy them to the SD card under `/fonts/YourFont/` (or `/.fonts/YourFont/` to hide the folder).
+3. Select the font in the device's font settings.
 
 ---
 
-## Community forks
+## Documentation
 
-One of the best things about open source is that anyone can take the code in a different direction. If you need something outside CrossPoint's [scope](./SCOPE.md), check out the community forks:
-
-- [CrossInk](https://github.com/uxjulia/CrossInk) — Typography and reading tracking: Bionic Reading (bolds word stems to create fixation points), guide dots between words, improved paragraph indents, and replaces the default fonts with ChareInk/Lexend/Bitter.
-
-- [papyrix-reader](https://github.com/bigbag/papyrix-reader) — Adds FB2 and MD format support. Actively maintained with Arabic script support. Custom themes via SD card.
-
-- ~~[crosspet](https://github.com/trilwu/crosspet) — A Vietnamese fork that adds a Tamagotchi-style virtual chicken that grows based on your reading milestones (pages read, streaks, care). Also: Flashcards, Weather, Pomodoro timer, and mini-games.~~ (Unmaintained)
-
-- [crosspoint-reader-cjk](https://github.com/aBER0724/crosspoint-reader-cjk) — Purpose-built for Chinese, Japanese, and Korean reading.
-
-- [inx](https://github.com/obijuankenobiii/inx) — Completely reimagines the user interface with tabbed navigation.
-
-- ~~[PlusPoint](https://github.com/ngxson/pluspoint-reader) — custom JS apps support.~~ (Unmaintained)
-
-- [crosspoint-reader-papers3](https://github.com/juicecultus/crosspoint-reader-papers3) — Crosspoint port for M5Stack Paper S3. 
-
-- [t5s3-reader](https://github.com/ShallowGreen123/t5s3-reader) — Crosspoint port for LilyGo T5 ePaper S3 / T5S3 4.7-inch e-paper device.
-
-**Note:** Many of these features will make their way into CrossPoint over time. We maintain a slower pace to ensure rock-solid stability and squash bugs before they reach your device.
-
-Want to build your own device? Be sure to check out the [de-link](https://github.com/iandchasse/de-link) project.
+- [User Guide](./USER_GUIDE.md) — general reading features (written for X3/X4; controls differ on the M5Paper as noted above)
+- [File formats](./docs/file-formats.md)
+- [Project scope](./SCOPE.md)
 
 ---
 
-CrossPoint Reader is **not affiliated with Xteink or any device manufacturer**.
+## Credits
 
-Huge shoutout to [diy-esp32-epub-reader](https://github.com/atomic14/diy-esp32-epub-reader), which inspired this project.
+- Built on [**CrossPoint Reader**](https://github.com/crosspoint-reader/crosspoint-reader) — the open-source e-reader firmware this port is based on. All the reading-engine work is theirs.
+- Hardware support (display / input / power drivers) uses the [**FreeInk SDK**](https://github.com/Free-Ink/freeink-sdk), which includes an M5Stack Paper board profile.
+- Original inspiration: [diy-esp32-epub-reader](https://github.com/atomic14/diy-esp32-epub-reader).
+
+Not affiliated with M5Stack, Xteink, or any device manufacturer.
